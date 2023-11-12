@@ -49,7 +49,7 @@ def get_steam_avatar_url(steam_id):
         return None
     
 def parse_message(data):
-    match_message = re.search(r'GET /Message/sender_n = (\S+): user_peer_id = (\S+): message = (.+): steam_id = (\S+): HTTP/1.1', data)
+    match_message = re.search(r'GET /Message/sender_n = (.+): user_peer_id = (.+): message = (.+): steam_id = (.+): HTTP/1.1', data)
     if match_message:
         sender_name = match_message.group(1)
         user_peer_id = match_message.group(2)
@@ -83,19 +83,26 @@ def parse_leave(data):
 def parse_join(data):
     match_join = re.search(r'GET /Join/steam_id = (\S+): name = (.+) HTTP/1.1', data)
     if match_join:
-        steam_id = match_join.group(1)
-        name = match_join.group(2)
-        avatar_url = get_steam_avatar_url(steam_id)
-        
-        embed_data = {
-            'title': f'{name} Joined',
-            'url': f"https://steamcommunity.com/profiles/{steam_id}",
-            'description': f"**Steam ID:** {steam_id}\n**Player:** {name} joined.",
-            'color': Join_color,
-            "thumbnail": {"url": avatar_url}
-        }
+        steam_id_str = match_join.group(1)
+        try:
+            steam_id = int(steam_id_str)
+        except ValueError:
+            print(f"Invalid steam_id value: {steam_id_str}. Not sending webhook.")
+            return
 
-        send_discord_webhook(embed_data)
+        name = match_join.group(2)
+        if steam_id > 0:
+            avatar_url = get_steam_avatar_url(steam_id)
+            embed_data = {
+                'title': f'{name} Joined',
+                'url': f"https://steamcommunity.com/profiles/{steam_id}",
+                'description': f"**Steam ID:** {steam_id}\n**Player:** {name} joined.",
+                'color': Join_color,
+                "thumbnail": {"url": avatar_url}
+            }
+            send_discord_webhook(embed_data)
+    else:
+        print("No match found in data.")
 
 def main():
     if WEBHOOK_URL_g == "url":
